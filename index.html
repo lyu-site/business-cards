@@ -35,7 +35,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans TC', sans-seri
 .card-name { font-weight: 600; font-size: 15px; }
 .card-sub { font-size: 12px; color: #888; margin-top: 2px; }
 .card-info { font-size: 12px; color: #666; display: flex; flex-direction: column; gap: 4px; border-top: 1px solid #f0efe8; padding-top: 10px; }
-.card-info span { display: flex; align-items: center; gap: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-info span { display: flex; align-items: flex-start; gap: 6px; }
 .card-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
 .pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; }
 .p0 { background: #E6F1FB; color: #0C447C; }
@@ -54,6 +54,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans TC', sans-seri
 .field input:focus, .field select:focus, .field textarea:focus { border-color: #378ADD; }
 .field textarea { min-height: 64px; resize: vertical; }
 .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.section-label { font-size: 11px; font-weight: 600; color: #378ADD; text-transform: uppercase; letter-spacing: 0.06em; margin: 1rem 0 0.5rem; border-top: 1px solid #f0efe8; padding-top: 1rem; }
 .btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.25rem; }
 .btn { padding: 7px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; border: 1px solid #d3d1c7; background: #fff; font-family: inherit; }
 .btn:hover { background: #f5f4f0; }
@@ -64,7 +65,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans TC', sans-seri
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .detail-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid #f0efe8; font-size: 13px; }
 .detail-row:last-of-type { border-bottom: none; }
-.dk { color: #888; flex-shrink: 0; margin-right: 12px; }
+.dk { color: #888; flex-shrink: 0; margin-right: 12px; white-space: nowrap; }
 .dv { color: #1a1a18; text-align: right; word-break: break-all; }
 @media (max-width: 500px) { .row2 { grid-template-columns: 1fr; } }
 </style>
@@ -90,6 +91,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans TC', sans-seri
 <div id="modal-add" style="display:none" class="overlay" onclick="if(event.target===this)closeAdd()">
   <div class="modal">
     <div class="modal-title" id="add-title">新增名片</div>
+
+    <div class="section-label">基本資料</div>
     <div class="row2">
       <div class="field"><label>姓名 *</label><input id="f-name" placeholder="王小明"></div>
       <div class="field"><label>公司 *</label><input id="f-company" placeholder="ABC 科技"></div>
@@ -111,8 +114,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Noto Sans TC', sans-seri
       <div class="field"><label>統一編號</label><input id="f-taxid" placeholder="12345678" maxlength="8"></div>
       <div class="field"></div>
     </div>
+
+    <div class="section-label">地址</div>
+    <div class="field"><label>聯絡地址</label><input id="f-contact-addr" placeholder="台北市信義區信義路五段 7 號"></div>
+    <div class="field"><label>公司地址</label><input id="f-company-addr" placeholder="台北市內湖區瑞光路 123 號"></div>
+    <div class="field"><label>公司地址／聯絡處</label><input id="f-branch-addr" placeholder="基隆市二信路232-1號2樓"></div>
+
+    <div class="section-label">其他</div>
     <div class="field"><label>標籤（逗號分隔）</label><input id="f-tags" placeholder="潛在客戶, SaaS, 台北"></div>
     <div class="field"><label>備註 / 認識場合</label><textarea id="f-note" placeholder="在哪裡認識、特別記錄…"></textarea></div>
+
     <div class="btn-row">
       <button class="btn" onclick="closeAdd()">取消</button>
       <button class="btn btn-primary" id="btn-save" onclick="saveCard()">儲存</button>
@@ -167,7 +178,7 @@ function allTags(){const s=new Set();cards.forEach(c=>(c.tags||[]).forEach(t=>t.
 function render(){
   const q=document.getElementById('search').value.toLowerCase();
   const filtered=cards.filter(c=>{
-    const m=!q||[c.name,c.company,c.title,c.email,c.taxid||'',c.note||''].join(' ').toLowerCase().includes(q);
+    const m=!q||[c.name,c.company,c.title,c.email,c.taxid||'',c.contactAddr||'',c.companyAddr||'',c.branchAddr||'',c.note||''].join(' ').toLowerCase().includes(q);
     const t=activeTag==='all'||(c.tags||[]).map(x=>x.trim()).includes(activeTag);
     return m&&t;
   });
@@ -193,7 +204,7 @@ function render(){
       <div class="card-info">
         ${c.email?`<span>&#9993; ${c.email}</span>`:''}
         ${c.phone?`<span>&#9742; ${c.phone}</span>`:''}
-        ${c.taxid?`<span>&#35; 統編 ${c.taxid}</span>`:''}
+        ${c.branchAddr?`<span>&#128205; ${c.branchAddr}</span>`:c.companyAddr?`<span>&#128205; ${c.companyAddr}</span>`:''}
         ${c.source?`<span>&#9675; ${c.source}</span>`:''}
       </div>
       ${pills?`<div class="card-tags">${pills}</div>`:''}
@@ -206,7 +217,9 @@ function setTag(t){activeTag=t;render();}
 function openAdd(){
   editId=null;
   document.getElementById('add-title').textContent='新增名片';
-  ['name','company','title','phone','email','taxid','tags','note'].forEach(f=>{const el=document.getElementById('f-'+f);if(el)el.value='';});
+  ['name','company','title','phone','email','taxid','contact-addr','company-addr','branch-addr','tags','note'].forEach(f=>{
+    const el=document.getElementById('f-'+f);if(el)el.value='';
+  });
   document.getElementById('f-source').value='實體名片';
   document.getElementById('modal-add').style.display='flex';
 }
@@ -225,6 +238,9 @@ async function saveCard(){
     phone:document.getElementById('f-phone').value.trim(),
     email:document.getElementById('f-email').value.trim(),
     taxid:document.getElementById('f-taxid').value.trim(),
+    contactAddr:document.getElementById('f-contact-addr').value.trim(),
+    companyAddr:document.getElementById('f-company-addr').value.trim(),
+    branchAddr:document.getElementById('f-branch-addr').value.trim(),
     source:document.getElementById('f-source').value,
     tags:document.getElementById('f-tags').value.split(',').map(t=>t.trim()).filter(Boolean),
     note:document.getElementById('f-note').value.trim(),
@@ -239,8 +255,11 @@ function openDetail(id){
   const c=cards.find(x=>x.id===id);if(!c)return;
   const a=av(c.name);
   const pills=(c.tags||[]).filter(t=>t.trim()).map((t,i)=>`<span class="pill ${pc(i)}">${t.trim()}</span>`).join('');
-  const rows=[['公司',c.company],['職稱',c.title],['電話',c.phone],['Email',c.email],['統一編號',c.taxid],['來源',c.source],['備註',c.note]]
-    .filter(r=>r[1]).map(r=>`<div class="detail-row"><span class="dk">${r[0]}</span><span class="dv">${r[1]}</span></div>`).join('');
+  const rows=[
+    ['公司',c.company],['職稱',c.title],['電話',c.phone],['Email',c.email],
+    ['統一編號',c.taxid],['聯絡地址',c.contactAddr],['公司地址',c.companyAddr],
+    ['公司地址／聯絡處',c.branchAddr],['來源',c.source],['備註',c.note]
+  ].filter(r=>r[1]).map(r=>`<div class="detail-row"><span class="dk">${r[0]}</span><span class="dv">${r[1]}</span></div>`).join('');
   document.getElementById('detail-content').innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.25rem;">
       <div style="display:flex;align-items:center;gap:14px;">
@@ -270,6 +289,9 @@ function openEdit(id){
   document.getElementById('f-phone').value=c.phone||'';
   document.getElementById('f-email').value=c.email||'';
   document.getElementById('f-taxid').value=c.taxid||'';
+  document.getElementById('f-contact-addr').value=c.contactAddr||'';
+  document.getElementById('f-company-addr').value=c.companyAddr||'';
+  document.getElementById('f-branch-addr').value=c.branchAddr||'';
   document.getElementById('f-source').value=c.source||'實體名片';
   document.getElementById('f-tags').value=(c.tags||[]).join(', ');
   document.getElementById('f-note').value=c.note||'';
